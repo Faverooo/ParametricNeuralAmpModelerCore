@@ -220,6 +220,13 @@ void nam::wavenet::detail::Layer::Process(const Eigen::MatrixXf& input, const Ei
   this->_z.leftCols(num_frames).noalias() =
     _conv.GetOutput().leftCols(num_frames) + _input_mixin.GetOutput().leftCols(num_frames);
 
+  if (_knobFilm)
+  {
+    auto z = _z.leftCols(num_frames).array();
+    z.colwise() *= _knobFilm->scale.array();
+    z.colwise() += _knobFilm->shift.array();
+  }
+
   if (this->_activation_pre_film)
   {
     this->_activation_pre_film->Process_(this->_z, condition, num_frames);
@@ -1332,4 +1339,52 @@ std::unique_ptr<nam::ModelConfig> nam::wavenet::create_config(const nlohmann::js
 namespace
 {
 static nam::ConfigParserHelper _register_WaveNet("WaveNet", nam::wavenet::create_config);
+}
+
+void nam::wavenet::detail::Layer::SetKnobFilm(KnobFilm film, Eigen::Index controls)
+{
+  const auto channels = _conv.get_out_channels();
+  if (film.scaleWeights.rows() != channels || film.shiftWeights.rows() != channels
+      || film.bias.size() != channels || film.scaleWeights.cols() != controls || film.shiftWeights.cols() != controls
+      || !film.scaleWeights.allFinite() || !film.shiftWeights.allFinite() || !film.bias.allFinite())
+    throw std::invalid_argument("Invalid knob FiLM coefficients");
+  film.scale.resize(channels);
+  film.shift.resize(channels);
+  _knobFilm = std::move(film);
+}
+
+void nam::wavenet::detail::Layer::SetKnobValues(const Eigen::VectorXf& values)
+{
+  if (!_knobFilm)
+    return;
+  auto& film = *_knobFilm;
+  if (values.size() != film.scaleWeights.cols())
+    throw std::invalid_argument("Wrong number of knob FiLM values");
+  film.scale.noalias() = film.scaleWeights * values;
+  film.scale.array() += 1.0f;
+  film.shift.noalias() = film.shiftWeights * values;
+  film.shift += film.bias;
+}
+
+void nam::wavenet::WaveNet::ConfigureKnobFilm(std::vector<detail::KnobFilm> films,
+                                             const Eigen::VectorXf& initialValues)
+{
+  size_t layerCount = 0;
+  for (auto& array : _layer_arrays)
+    layerCount += array.KnobFilmLayers().size();
+  if (films.size() != layerCount || initialValues.size() == 0)
+    throw std::invalid_argument("Wrong number of knob FiLM layers or controls");
+
+  size_t layerIndex = 0;
+  for (auto& array : _layer_arrays)
+    for (auto& layer : array.KnobFilmLayers())
+      layer.SetKnobFilm(std::move(films[layerIndex++]), initialValues.size());
+  SetKnobValues(initialValues);
+}
+
+void nam::wavenet::WaveNet::SetKnobValues(const Eigen::VectorXf& values)
+{
+  for (auto& array : _layer_arrays)
+    for (auto& layer : array.KnobFilmLayers())
+      layer.SetKnobValues(values);
 }

@@ -58,6 +58,10 @@ public:
   /// \param num_frames Number of frames to process
   void process(NAM_SAMPLE** input, NAM_SAMPLE** output, const int num_frames) override;
 
+  void ConfigureKnobFilm(std::vector<detail::KnobFilm> films, const Eigen::VectorXf& initialValues);
+  /// Call on the processing thread between blocks after configuring FiLM.
+  void SetKnobValues(const Eigen::VectorXf& values);
+
   void prewarm() override;
 
   void SetPrewarmOnReset(const bool prewarmOnReset) override;

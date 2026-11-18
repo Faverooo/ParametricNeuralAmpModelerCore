@@ -20,6 +20,15 @@ namespace wavenet
 namespace detail
 {
 
+struct KnobFilm
+{
+  Eigen::MatrixXf scaleWeights;
+  Eigen::MatrixXf shiftWeights;
+  Eigen::VectorXf bias;
+  Eigen::VectorXf scale;
+  Eigen::VectorXf shift;
+};
+
 /// \brief A single WaveNet layer block
 ///
 /// A WaveNet layer performs the following operations:
@@ -228,6 +237,9 @@ public:
   void PrewarmFromCache() { _conv.PrewarmFromCache(); }
   void CacheStateAsPrewarmed() { _conv.CacheStateAsPrewarmed(); }
 
+  void SetKnobFilm(KnobFilm film, Eigen::Index controls);
+  void SetKnobValues(const Eigen::VectorXf& values);
+
 private:
   // The dilated convolution at the front of the block
   Conv1D _conv;
@@ -239,6 +251,7 @@ private:
   std::unique_ptr<Conv1x1> _head1x1;
   // The internal state
   Eigen::MatrixXf _z;
+  std::optional<KnobFilm> _knobFilm = std::nullopt;
   // Output to next layer (residual connection: input + layer1x1 output, or just input if layer1x1 inactive)
   Eigen::MatrixXf _output_next_layer;
   // Output to head (skip connection: activated conv output)
@@ -342,6 +355,8 @@ public:
   bool HasCachedPrewarmState() const;
   void PrewarmFromCache();
   void CacheStateAsPrewarmed();
+
+  std::vector<Layer>& KnobFilmLayers() { return _layers; }
 
 private:
   // The rechannel before the layers

@@ -17,6 +17,7 @@ include_directories(tools ${NAM_DEPS_PATH}/nlohmann)
 include_directories(tools ${AUDIO_DSP_TOOLS_DIR}/dsp)
 
 add_executable(loadmodel loadmodel.cpp ${NAM_SOURCES})
+add_executable(test_pnam test_pnam.cpp ${NAM_SOURCES})
 add_executable(benchmodel benchmodel.cpp ${NAM_SOURCES})
 add_executable(bench_linear bench_linear.cpp ${NAM_SOURCES})
 target_compile_features(bench_linear PUBLIC cxx_std_20)
@@ -91,7 +92,7 @@ if(ENABLE_ASSERT_TEST)
 	target_compile_definitions(run_tests PRIVATE ADDASSERT)
 endif()
 
-source_group(NAM ${CMAKE_CURRENT_SOURCE_DIR} FILES ${NAM_SOURCES})
+source_group(NAM FILES ${NAM_SOURCES})
 
 target_compile_features(${TOOLS} PUBLIC cxx_std_20)
 

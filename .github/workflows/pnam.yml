@@ -1,0 +1,35 @@
+name: PNAM Core
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: cmake -S . -B build-ci -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build-ci --target run_tests test_pnam --parallel 2
+      - run: ./build-ci/tools/run_tests
+      - run: ./build-ci/tools/test_pnam example_models/wavenet.nam "${RUNNER_TEMP}/test.pnam"
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Publish Core source release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create --repo "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" --verify-tag --generate-notes
