@@ -8,7 +8,7 @@ jobs:
     name: Build Ubuntu (libstdc++)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: recursive
     
@@ -59,7 +59,7 @@ jobs:
     name: Build Ubuntu (libc++)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: recursive
 
