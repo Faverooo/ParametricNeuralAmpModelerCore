@@ -25,6 +25,7 @@ public:
   static ParametricModel Load(const std::filesystem::path& path);
 
   DSP& Audio() { return *_audio; }
+  std::optional<float> OutputTrimDb() const { return _outputTrimDb; }
   const std::string& Amplifier() const { return _amplifier; }
   const std::vector<ParametricControl>& Controls() const { return _controls; }
 
@@ -34,11 +35,12 @@ public:
 
 private:
   ParametricModel(std::unique_ptr<wavenet::WaveNet> audio, std::string amplifier,
-                  std::vector<ParametricControl> controls);
+                  std::vector<ParametricControl> controls, std::optional<float> outputTrimDb);
 
   std::unique_ptr<wavenet::WaveNet> _audio;
   std::string _amplifier;
   std::vector<ParametricControl> _controls;
   Eigen::VectorXf _modelValues;
+  std::optional<float> _outputTrimDb;
 };
 } // namespace nam

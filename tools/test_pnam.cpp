@@ -53,7 +53,7 @@ int main(int argc, char** argv)
     const nlohmann::json controls = nlohmann::json::array(
       {{{"id", "gain"}, {"label", "Gain"}, {"min", 2}, {"max", 10}, {"default", 2}, {"model_min", 0}, {"model_max", 1}}});
     const nlohmann::json document = {{"format", "pnam"}, {"version", 1}, {"amplifier", "CI amp"},
-                                    {"controls", controls}, {"base_nam", base}, {"film_linear", layers}};
+                                    {"controls", controls}, {"base_nam", base}, {"film_linear", layers}, {"output_trim_db", 6.0}};
     {
       std::ofstream output(argv[2]);
       check(bool(output << document), "Cannot write PNAM test fixture");
@@ -62,6 +62,7 @@ int main(int argc, char** argv)
     auto model = nam::ParametricModel::Load(argv[2]);
     auto stock = nam::get_dsp(base);
     check(model.Amplifier() == "CI amp" && model.Controls().size() == 1, "Wrong PNAM metadata");
+    check(model.OutputTrimDb() == 6.0f, "Incorrect suggested output trim");
     const auto reference = render(*stock);
     const auto initial = render(model.Audio());
     for (size_t i = 0; i < initial.size(); ++i)
@@ -77,6 +78,28 @@ int main(int argc, char** argv)
       maxDifference = std::max(maxDifference, double(std::abs(changed[i] - initial[i])));
     }
     check(maxDifference > 1e-5, "FiLM did not affect the output");
+    const auto reject = [&](const nlohmann::json& invalid, const char* message)
+    {
+      {
+        std::ofstream output(argv[2]);
+        check(bool(output << invalid), "Cannot write invalid PNAM fixture");
+      }
+      bool rejected = false;
+      try { (void) nam::ParametricModel::Load(argv[2]); }
+      catch (const std::invalid_argument&) { rejected = true; }
+      check(rejected, message);
+    };
+
+    auto invalid = document;
+    invalid["version"] = 1.0;
+    reject(invalid, "Noninteger PNAM version accepted");
+    invalid = document;
+    invalid["controls"][0]["min"] = -3.0e38;
+    invalid["controls"][0]["max"] = 3.0e38;
+    reject(invalid, "Overflowing PNAM control range accepted");
+    invalid = document;
+    invalid["output_trim_db"] = 25;
+    reject(invalid, "Out-of-range PNAM output trim accepted");
     std::cout << "PNAM loader, dial mapping and WaveNet render passed\n";
     return 0;
   }

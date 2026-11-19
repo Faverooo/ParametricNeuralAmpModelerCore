@@ -34,11 +34,12 @@ float ReadFinite(const json& object, const char* key)
 } // namespace
 
 nam::ParametricModel::ParametricModel(std::unique_ptr<wavenet::WaveNet> audio, std::string amplifier,
-                                      std::vector<ParametricControl> controls)
+                                      std::vector<ParametricControl> controls, std::optional<float> outputTrimDb)
 : _audio(std::move(audio))
 , _amplifier(std::move(amplifier))
 , _controls(std::move(controls))
 , _modelValues(_controls.size())
+, _outputTrimDb(outputTrimDb)
 {
 }
 
@@ -48,7 +49,7 @@ nam::ParametricModel nam::ParametricModel::Load(const std::filesystem::path& pat
   if (!file)
     throw std::runtime_error("Cannot open PNAM file: " + path.string());
   const auto document = json::parse(file);
-  if (document.at("format") != "pnam" || document.at("version") != 1)
+  if (document.at("format") != "pnam" || !document.at("version").is_number_integer() || document.at("version") != 1)
     throw std::invalid_argument("Unsupported PNAM format or version");
 
   std::vector<ParametricControl> controls;
@@ -66,7 +67,8 @@ nam::ParametricModel nam::ParametricModel::Load(const std::filesystem::path& pat
     if (entry.contains("capture_step"))
       control.captureStep = ReadFinite(entry, "capture_step");
     if (control.id.empty() || control.label.empty() || !ids.insert(control.id).second
-        || control.minimum >= control.maximum || control.initial < control.minimum || control.initial > control.maximum
+        || control.minimum >= control.maximum || !std::isfinite(control.maximum - control.minimum)
+        || control.initial < control.minimum || control.initial > control.maximum
         || control.modelMinimum >= control.modelMaximum || (control.captureStep && *control.captureStep <= 0.0f))
       throw std::invalid_argument("Invalid PNAM control descriptor");
     initialValues(controls.size()) =
@@ -86,6 +88,15 @@ nam::ParametricModel nam::ParametricModel::Load(const std::filesystem::path& pat
                      Eigen::Map<const Eigen::VectorXf>(bias.data(), bias.size()), {}, {}});
   }
 
+  std::optional<float> outputTrimDb;
+  if (document.contains("output_trim_db"))
+  {
+    const auto trim = ReadFinite(document, "output_trim_db");
+    if (trim < -24.0f || trim > 24.0f)
+      throw std::invalid_argument("PNAM output trim must be between -24 and 24 dB");
+    outputTrimDb = trim;
+  }
+
   const auto& base = document.at("base_nam");
   if (base.at("architecture") != "WaveNet" || ReadFinite(base, "sample_rate") <= 0.0f)
     throw std::invalid_argument("PNAM requires a WaveNet with a positive sample rate");
@@ -96,7 +107,7 @@ nam::ParametricModel nam::ParametricModel::Load(const std::filesystem::path& pat
   waveNet->ConfigureKnobFilm(std::move(films), initialValues);
   auto amplifier = document.at("amplifier").get<std::string>();
   audio.release();
-  return ParametricModel(std::unique_ptr<wavenet::WaveNet>(waveNet), std::move(amplifier), std::move(controls));
+  return ParametricModel(std::unique_ptr<wavenet::WaveNet>(waveNet), std::move(amplifier), std::move(controls), outputTrimDb);
 }
 
 bool nam::ParametricModel::SetControls(std::span<const float> values)

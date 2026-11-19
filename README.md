@@ -1,28 +1,13 @@
-# NeuralAmpModelerCore
+# ParametricNAM Core
 
-[![Build](https://github.com/sdatkinson/NeuralAmpModelerCore/actions/workflows/build.yml/badge.svg)](https://github.com/sdatkinson/NeuralAmpModelerCore/actions/workflows/build.yml)
+The audio engine behind the [ParametricNAM VST3](https://github.com/Faverooo/ParametricNeuralAmpModelerPlugin). It loads `.pnam` amp models and uses their knob settings to process guitar audio. This project is based on Steven Atkinson’s [NeuralAmpModelerCore](https://github.com/sdatkinson/NeuralAmpModelerCore).
 
-Core C++ DSP library for NAM plugins.
+## Use it
 
-For an example of how to use, see [NeuralAmpModelerPlugin](https://github.com/sdatkinson/NeuralAmpModelerPlugin).
+**To play a model**, install the [VST3](https://github.com/Faverooo/ParametricNeuralAmpModelerPlugin/releases/latest). It already includes the Core.
 
-## Included Tools
+**To use the engine in your own C++ project**, clone this repository with its submodules. Start with `nam::ParametricModel::Load` in [NAM/pnam.h](NAM/pnam.h). The example test loads a model, changes a knob and processes audio. [C++ example](tools/test_pnam.cpp)
 
-This repo includes a few helpful tools.
-For guidance on building them, have a look at the workflow provided in `.github/workflows/build.yml`.
+## License
 
-* [`run_tests`](https://github.com/sdatkinson/NeuralAmpModelerCore/blob/761fa968766bcf67d3035320c195969d9ba41fa1/tools/CMakeLists.txt#L15), which runs a suite of unit tests.
-* [`loadmodel`](https://github.com/sdatkinson/NeuralAmpModelerCore/blob/761fa968766bcf67d3035320c195969d9ba41fa1/tools/CMakeLists.txt#L13), which allows you to test loading a `.nam` file.
-* [`benchmodel`](https://github.com/sdatkinson/NeuralAmpModelerCore/blob/761fa968766bcf67d3035320c195969d9ba41fa1/tools/CMakeLists.txt#L14), which allows you to test how quickly a model runs in real time. _Note: For more granular profiling tools, check out the [`main-profiling`](https://github.com/sdatkinson/NeuralAmpModelerCore/tree/main-profiling) branch.
-
-## Sharp edges
-This library uses [Eigen](http://eigen.tuxfamily.org) to do the linear algebra routines that its neural networks require. Since these models hold their parameters as eigen object members, there is a risk with certain compilers and compiler optimizations that their memory is not aligned properly. This can be worked around by providing two preprocessor macros: `EIGEN_MAX_ALIGN_BYTES 0` and `EIGEN_DONT_VECTORIZE`, though this will probably harm performance. See [Structs Having Eigen Members](http://eigen.tuxfamily.org/dox-3.2/group__TopicStructHavingEigenMembers.html) for more information. This is being tracked as [Issue 67](https://github.com/sdatkinson/NeuralAmpModelerCore/issues/67).
-
-## Sponsors
-
-<div align="center">
-  <img src="media/tone3000-logo.svg" alt="Tone3000 logo">
-</div>
-
-Development of version 0.4.0 of this library has been generously supported by [TONE3000](https://tone3000.com). 
-**Thank you!**
+The Core is [MIT licensed](LICENSE). Third-party dependencies keep their own license terms. Thanks to [TONE3000](https://tone3000.com) for sponsoring development of the upstream Core.
